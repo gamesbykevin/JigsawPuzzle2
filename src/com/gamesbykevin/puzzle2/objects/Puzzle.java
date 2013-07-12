@@ -588,33 +588,35 @@ public class Puzzle
         
         g2d.setColor(Color.white);
         g2d.drawRect(screen.x, screen.y, screen.width, screen.height);
-        g2d.setFont(g2d.getFont().deriveFont(Font.PLAIN, 14));
+        g2d.setFont(g2d.getFont().deriveFont(Font.PLAIN, 16));
         
         String desc = "";
-        
-        if (gameTypeIndex == 0)
-        {   //race
-            desc = timers.getTimer(TimerTrackers.GameTimer).getDescPassed(TIME_FORMAT);
-        }
-        else
-        {   //time attack
-            desc = timers.getTimer(TimerTrackers.GameTimer).getDescRemaining(TIME_FORMAT);
-        }
         
         if (hasGameOver())
         {
             if (hasPlace())
-                desc = "#" + place + " " + desc;
+                desc += "#" + place;
         }
         else
         {
             if (hasAutoSolve())
             {
-                desc = "Cpu " + desc;
+                desc += "Cpu";
             }
             else
             {
-                desc = "Hum " + desc;
+                desc += "Human ";
+                
+                //race
+                if (gameTypeIndex == 0)
+                {
+                    desc += timers.getTimer(TimerTrackers.GameTimer).getDescPassed(TIME_FORMAT);
+                }
+                else
+                {
+                    //time attack
+                    desc += timers.getTimer(TimerTrackers.GameTimer).getDescRemaining(TIME_FORMAT);
+                }
             }
         }
         
