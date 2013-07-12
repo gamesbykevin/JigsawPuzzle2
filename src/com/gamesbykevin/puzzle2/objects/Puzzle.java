@@ -2,14 +2,11 @@ package com.gamesbykevin.puzzle2.objects;
 
 import com.gamesbykevin.framework.input.Mouse;
 import com.gamesbykevin.framework.resources.Progress;
-import com.gamesbykevin.framework.util.DateHelper;
-import com.gamesbykevin.framework.util.Timer;
 import com.gamesbykevin.framework.util.TimerCollection;
 
 import com.gamesbykevin.puzzle2.ai.*;
 
 import java.awt.*;
-import java.awt.geom.*;
 import java.awt.image.*;
 import java.util.ArrayList;
 
