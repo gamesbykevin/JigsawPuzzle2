@@ -92,8 +92,8 @@ public class Puzzles
         double squareRoot = Math.sqrt(numPlayers);
         
         Rectangle windows[][] = null;
-        Rectangle leftHalf = null;
-        Rectangle rightHalf = null;
+        Rectangle leftSide = null;
+        Rectangle rightSide = null;
         
         //if 1 player use entire window
         if (numPlayers == 1)
@@ -106,16 +106,16 @@ public class Puzzles
             {
                 //if 1st player is human they will get left half the window, the other cpu windows will all share the right half
                 Rectangle r = main.getScreen();
-                leftHalf = new Rectangle(r.x, r.y, r.width / 2, r.height);
-                rightHalf = new Rectangle(r.x + (r.width / 2), r.y, r.width / 2, r.height);
+                leftSide = new Rectangle(r.x, r.y, (int)(r.width * .66), r.height);
+                rightSide = new Rectangle(r.x + (int)(r.width * .66), r.y, (int)(r.width * .33), r.height);
                 
                 if ((int)squareRoot < squareRoot)
                 {
-                    windows = WindowHelper.getWindows(rightHalf, (int)squareRoot, (int)squareRoot + 1);
+                    windows = WindowHelper.getWindows(rightSide, (int)squareRoot, (int)squareRoot + 1);
                 }
                 else
                 {
-                    windows = WindowHelper.getWindows(rightHalf, (int)squareRoot, (int)squareRoot);
+                    windows = WindowHelper.getWindows(rightSide, (int)squareRoot, (int)squareRoot);
                 }
             }
             else
@@ -134,9 +134,9 @@ public class Puzzles
         
         if (humanPlayer)
         {
-            if (leftHalf != null)
+            if (leftSide != null)
             {
-                collection.add(new Puzzle(image, puzzleRows, puzzleCols, leftHalf, main.getTimeDeductionPerFrame(), gameTypeIndex, difficultyIndex, puzzleCutIndex));
+                collection.add(new Puzzle(image, puzzleRows, puzzleCols, leftSide, main.getTimeDeductionPerFrame(), gameTypeIndex, difficultyIndex, puzzleCutIndex));
             }
             else
             {

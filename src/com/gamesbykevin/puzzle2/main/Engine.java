@@ -1,6 +1,5 @@
 package com.gamesbykevin.puzzle2.main;
 
-import com.gamesbykevin.framework.display.WindowHelper;
 import com.gamesbykevin.framework.input.*;
 import com.gamesbykevin.framework.input.Keyboard;
 
