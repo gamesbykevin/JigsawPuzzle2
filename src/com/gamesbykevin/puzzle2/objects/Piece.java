@@ -1,12 +1,13 @@
 package com.gamesbykevin.puzzle2.objects;
 
+import com.gamesbykevin.framework.base.Cell;
 import com.gamesbykevin.framework.base.Sprite;
 
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Piece extends Sprite
+public final class Piece extends Sprite
 {
     private boolean northMale;
     private boolean southMale;
@@ -25,9 +26,22 @@ public class Piece extends Sprite
     //the children piece selected
     private int selectedPieceIndex = -1;
     
+    //where location where the piece will start at
+    private Cell startCell;
+    
     public Piece()
     {
         children = new ArrayList<>();
+    }
+    
+    public void setStartCell(final Cell startCell)
+    {
+        this.startCell = startCell;
+    }
+    
+    public Cell getStartCell()
+    {
+        return this.startCell;
     }
     
     /**
@@ -36,6 +50,17 @@ public class Piece extends Sprite
      * @param newPiece 
      */
     public void add(Piece newPiece)
+    {
+        add(newPiece, this.getPoint());
+    }
+    
+    /**
+     * Add Piece to current piece. If the new piece has children pieces
+     * those children pieces are also added to the current piece.
+     * @param newPiece 
+     * @param mousePoint location of mouse
+     */
+    public void add(Piece newPiece, final Point mousePoint)
     {
         //check if puzzle piece being added already has child
         if (newPiece.hasChildren())
@@ -54,7 +79,7 @@ public class Piece extends Sprite
         children.add(newPiece);
         
         //after child is added align
-        setNewPosition(getPoint());
+        setNewPosition(mousePoint);
     }
     
     public Point getOriginalLocation()
@@ -62,8 +87,12 @@ public class Piece extends Sprite
         return this.originalLocation;
     }
     
+    /**
+     * Set original position, needed for cpu to determine where pieces are to be placed
+     * @param originalLocation 
+     */
     public void setOriginalLocation(Point originalLocation)
-    {   //set original position
+    {
         this.originalLocation = originalLocation;
     }
     
@@ -93,10 +122,9 @@ public class Piece extends Sprite
      * Update the puzzle pieces location as well as the children pieces
      * @param Point x,y coordinate
      */
-    public void setNewPosition(final Point point)
+    public void setNewPosition(Point mousePoint)
     {
-        point.x -= (getWidth()  / 2);
-        point.y -= (getHeight() / 2);
+        Point point = new Point(mousePoint);
         
         final int baseRow;
         final int baseCol;
@@ -112,11 +140,12 @@ public class Piece extends Sprite
             baseRow = getRow();
         }
         
-        //update parent Piece as well
+        //update parent Piece
         int diffCol = getCol() - baseCol;
         int diffRow = getRow() - baseRow;
         super.setLocation(point.x + (diffCol * getOriginalWidth()), point.y + (diffRow * getOriginalHeight()));
         
+        //update children pieces
         for (Piece child : children)
         {
             diffCol = child.getCol() - baseCol;
@@ -125,32 +154,43 @@ public class Piece extends Sprite
         }
     }
     
+    /**
+     * Does this piece have any children
+     * @return boolean
+     */
     public boolean hasChildren()
     {
         return (children.size() > 0);
     }
     
+    /**
+     * Does this piece have a child piece at the give x,y location
+     * @param point
+     * @return boolean
+     */
     public boolean hasChild(final Point point)
     {
         for (int i=0; i < children.size(); i++)
         {
-            if (getChild(i).getRectangle().contains(point))
+            if (children.get(i).getRectangle().contains(point))
                 return true;
         }
         
         return false;
     }
     
-    private Piece getChild(final int i)
-    {
-        return (Piece)children.get(i);
-    }
-    
+    /**
+     * Get the array list of child pieces
+     * @return List<Piece>
+     */
     public List<Piece> getChildren()
     {
         return children;
     }
     
+    /**
+     * Clear the array list
+     */
     public void removeChildren()
     {
         children.clear();
@@ -227,7 +267,7 @@ public class Piece extends Sprite
         {
             for (int i=0; i < children.size(); i++)
             {
-                Piece child = getChild(i);
+                Piece child = children.get(i);
 
                 if (child.intersects(piece))
                     return true;
@@ -269,62 +309,60 @@ public class Piece extends Sprite
         if (!piece.getRectangle().intersects(getRectangle()))
             return false;
         
-        int verticalH =   (int)(piece.getHeight() * Puzzle.EXTRA_INTERSECT_RATIO);
-        int horizontalW = (int)(piece.getWidth() *  Puzzle.EXTRA_INTERSECT_RATIO);
+        final int verticalH   = (int)(piece.getHeight() * Puzzle.EXTRA_RATIO);
+        final int horizontalW = (int)(piece.getWidth() *  Puzzle.EXTRA_RATIO);
+        
+        Rectangle r1 = null;
+        Rectangle r2 = null;
         
         //if two puzzle pieces have the same column and 1 row away
         if (getCol() == piece.getCol() && getRow() - 1 == piece.getRow())
         {
             //piece above current get bottom area to test collision
-            Rectangle northPieceSouthBorder = new Rectangle(piece.getX(), piece.getY() + piece.getHeight() - verticalH, piece.getWidth(), verticalH);
+            r1 = new Rectangle(piece.getX(), piece.getY() + piece.getHeight() - verticalH, piece.getWidth(), verticalH);
             
             //current piece get top area to test collision
-            Rectangle southPieceNorthBorder = new Rectangle(getX(), getY(), getWidth(), verticalH);
-            
-            if (southPieceNorthBorder.intersects(northPieceSouthBorder))
-                return true;
+            r2 = new Rectangle(getX(), getY(), getWidth(), verticalH);
         }
         
         //if two puzzle pieces have the same column and 1 row away
         if (getCol() == piece.getCol() && getRow() + 1 == piece.getRow())
         {   
             //piece below current piece get top area to test collision
-            Rectangle southPieceNorthBorder = new Rectangle(piece.getX(), piece.getY(), piece.getWidth(), verticalH);
+            r1 = new Rectangle(piece.getX(), piece.getY(), piece.getWidth(), verticalH);
             
             //current piece get bottom area to test collision
-            Rectangle northPieceSouthBorder = new Rectangle(getX(), getY() + getHeight() - verticalH, getWidth(), verticalH);
-            
-            if (southPieceNorthBorder.intersects(northPieceSouthBorder))
-                return true;
+            r2 = new Rectangle(getX(), getY() + getHeight() - verticalH, getWidth(), verticalH);
         }
         
         //if two puzzle pieces have the same row and 1 column away
         if (getCol() + 1 == piece.getCol() && getRow() == piece.getRow())
         {
             //piece to the right of the current piece get left border
-            Rectangle eastPieceWestBorder = new Rectangle(piece.getX(), piece.getY(), horizontalW, piece.getHeight());
+            r1 = new Rectangle(piece.getX(), piece.getY(), horizontalW, piece.getHeight());
             
             //current piece get right area to test collision
-            Rectangle westPieceEastBorder = new Rectangle(getX() + getWidth() - horizontalW, getY(), horizontalW, getHeight());
-            
-            if (westPieceEastBorder.intersects(eastPieceWestBorder))
-                return true;
+            r2 = new Rectangle(getX() + getWidth() - horizontalW, getY(), horizontalW, getHeight());
         }
         
+        //if two puzzle pieces have the same row and 1 column away
         if (getCol() - 1 == piece.getCol() && getRow() == piece.getRow())
-        {   //if two puzzle pieces have the same row and 1 column away
-            
+        {
             //piece to the left of the current piece get right border
-            Rectangle westPieceEastBorder = new Rectangle(piece.getX() + piece.getWidth() - horizontalW, piece.getY(), horizontalW, piece.getHeight());
+            r1 = new Rectangle(piece.getX() + piece.getWidth() - horizontalW, piece.getY(), horizontalW, piece.getHeight());
             
             //current piece get right area to test collision
-            Rectangle eastPieceWestBorder = new Rectangle(getX(), getY(), horizontalW, getHeight());
-            
-            if (westPieceEastBorder.intersects(eastPieceWestBorder))
-                return true;
+            r2 = new Rectangle(getX(), getY(), horizontalW, getHeight());
         }
         
-        return false;
+        if (r1 == null || r2 == null)
+        {
+            return false;
+        }
+        else
+        {
+            return r1.intersects(r2);
+        }
     }
     
     @Override
@@ -334,7 +372,7 @@ public class Piece extends Sprite
         
         for (int i=0; i < children.size(); i++)
         {
-            getChild(i).draw(g);
+            children.get(i).draw(g);
         }
         
         return g;

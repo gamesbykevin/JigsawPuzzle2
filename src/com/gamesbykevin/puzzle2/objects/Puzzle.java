@@ -1,5 +1,6 @@
 package com.gamesbykevin.puzzle2.objects;
 
+import com.gamesbykevin.framework.base.Cell;
 import com.gamesbykevin.framework.input.Mouse;
 import com.gamesbykevin.framework.resources.Progress;
 import com.gamesbykevin.framework.util.TimerCollection;
@@ -28,17 +29,11 @@ public class Puzzle
     //use progress tracker to track images loading
     private Progress cuttingProgress;
     
-    //use progress to track scrabling images
-    private Progress scramblingProgress;
-    
     //current puzzle piece selected
     private int currentPieceIndex = -1;
     
     //this is the ratio of the original width to extend the image on each end
     public static final double EXTRA_RATIO = .25;
-    
-    //this is the ratio on the end
-    public static final double EXTRA_INTERSECT_RATIO = .25;
     
     //should the computer autoSolve the puzzle
     private boolean autoSolve = false;
@@ -56,15 +51,21 @@ public class Puzzle
     //the window this puzzle is contained within
     private final Rectangle screen;
     
+    //is scrambling the images complete
+    private boolean scramblingComplete = false;
+    
+    //do we play connect sound effect
+    private boolean playSound = false;
+    
     //is game over
     private boolean gameOver = false;
     
     //what place did this object come in
     private int place = -1;
     
-    public enum TimerTrackers
+    public enum TimerKey
     {
-        GameTimer, CpuMoveTimer
+        Game, CpuMove, Scramble
     }
     
     private Cutter.PuzzleCut puzzleCut;
@@ -108,15 +109,17 @@ public class Puzzle
         {
             long reset = ArtificialIntelligence.getDifficultyDelay(ArtificialIntelligence.Difficulty.values()[difficultyIndex]);
             reset *= (rows * cols);
-            timers.add(TimerTrackers.GameTimer, reset);
+            timers.add(TimerKey.Game, reset);
         }
         else
         {
             //race
-            timers.add(TimerTrackers.GameTimer);
+            timers.add(TimerKey.Game);
         }
         
-        timers.add(TimerTrackers.CpuMoveTimer);
+        //scramble for 1 second
+        timers.add(TimerKey.Scramble, TimerCollection.toNanoSeconds(1000L));
+        timers.add(TimerKey.CpuMove);
         
         pieces = new ArrayList<>();
         
@@ -142,7 +145,6 @@ public class Puzzle
         
         //create new progress tracker
         cuttingProgress = new Progress(rows * cols);
-        scramblingProgress = new Progress(rows * cols);
         
         for (int col=0; col < cols; col++)
         {
@@ -216,6 +218,16 @@ public class Puzzle
         }
     }
     
+    public boolean hasPlaySound()
+    {
+        return this.playSound;
+    }
+    
+    public void setPlaySound(final boolean playSound)
+    {
+        this.playSound = playSound;
+    }
+    
     public Cutter.PuzzleCut getPuzzleCut()
     {
         return puzzleCut;
@@ -263,7 +275,7 @@ public class Puzzle
     
     public boolean isScramblingComplete()
     {
-        return scramblingProgress.isLoadingComplete();
+        return scramblingComplete;
     }
     
     public void update(Mouse mouse) throws Exception
@@ -271,29 +283,70 @@ public class Puzzle
         if (!isCuttingComplete())
         {
             //get puzzle piece
-            Piece piece = pieces.get(cuttingProgress.getCurrentCount());
+            Piece tmp = pieces.get(cuttingProgress.getCurrentCount());
 
             //cut image for puzzle piece
-            piece = Cutter.createPiece(this, piece);
+            tmp = Cutter.createPiece(this, tmp);
 
             //set puzzle piece after cut image has been set
-            setPiece(cuttingProgress.getCurrentCount(), piece);
+            setPiece(cuttingProgress.getCurrentCount(), tmp);
 
             cuttingProgress.increaseProgress();
+            
+            //if cutting is complete place all pieces in the center
+            if (isCuttingComplete())
+            {
+                List<Cell> cells = new ArrayList<>();
+                
+                for (Piece piece : pieces)
+                {
+                    final int middleX = screen.x + (screen.width / 2) - (piece.getWidth()  / 2);
+                    final int middleY = screen.y + (screen.height/ 2) - (piece.getHeight() / 2);
+                    piece.setLocation(middleX, middleY);
+                    piece.setOriginalLocation(piece.getPoint());
+                    cells.add(piece.getCell());
+                }
+                
+                //assign start col, row
+                for (Piece piece : pieces)
+                {
+                    //get random cell from list and assign it to piece
+                    final int rand = (int)(Math.random() * cells.size());
+                    piece.setStartCell(cells.get(rand));
+                    cells.remove(rand);
+                }
+            }
         }
         else
         {
             if (!isScramblingComplete())
             {
-                Piece piece = pieces.get(scramblingProgress.getCurrentCount());
+                timers.update(TimerKey.Scramble);
                 
-                int randX = screen.x + (int)(Math.random() * (screen.width  - piece.getWidth() ));
-                int randY = screen.y + (int)(Math.random() * (screen.height - piece.getHeight()));
-                
-                piece.setLocation(randX, randY);
-                piece.setOriginalLocation(piece.getPoint());//set original location for
-                
-                scramblingProgress.increaseProgress();
+                for (Piece piece : pieces)
+                {
+                    Point start       = piece.getOriginalLocation();
+                    Point destination = getStartDestination(piece);
+                    
+                    int xDiff = start.x - destination.x;
+                    int yDiff = start.y - destination.y;
+
+                    int x = destination.x;
+                    int y = destination.y;
+
+                    if (timers.getTimer(TimerKey.Scramble).getProgress() < 1)
+                    {
+                        x = start.x - (int)(xDiff * timers.getTimer(TimerKey.Scramble).getProgress());
+                        y = start.y - (int)(yDiff * timers.getTimer(TimerKey.Scramble).getProgress());
+                    }
+                    else
+                    {
+                        this.scramblingComplete = true;
+                        piece.setOriginalLocation(piece.getPoint());
+                    }
+
+                    piece.setLocation(new Point(x, y));
+                }
             }
             else
             {
@@ -304,9 +357,9 @@ public class Puzzle
                     //if time attack mode make sure timer doesnt go negative
                     if (gameTypeIndex == 1)
                     {
-                        if (timers.hasTimePassed(TimerTrackers.GameTimer))
+                        if (timers.hasTimePassed(TimerKey.Game))
                         {
-                            timers.setRemaining(TimerTrackers.GameTimer, 0);
+                            timers.setRemaining(TimerKey.Game, 0);
                             setGameOver(true);
                             return;
                         }
@@ -322,8 +375,10 @@ public class Puzzle
                     else
                     {
                         //creating-scrambling images complete now check mouse input
+                        
+                        //if no puzzle piece is selected check mouse actions
                         if (!hasSelectedPiece())
-                        {   //if no puzzle piece is selected check mouse actions
+                        {
                             if (mouse.isMouseDragged() || mouse.isMouseClicked())
                                 setSelectedPiece(mouse.getLocation());
                         }
@@ -332,15 +387,24 @@ public class Puzzle
                             //if dragging mouse move puzzle piece appropriately
                             if (mouse.isMouseDragged())
                             {
-                                getPiece().setNewPosition(mouse.getLocation());
+                                Point tmp = new Point(mouse.getLocation());
+                                tmp.x -= (getPiece().getWidth()  / 2);
+                                tmp.y -= (getPiece().getHeight() / 2);
+                                
+                                getPiece().setNewPosition(tmp);
                             }
 
                             //if mouse released reset current puzzle piece selected
                             if (mouse.isMouseReleased())
                             {
-                                checkMatch();
+                                Point tmp = new Point(mouse.getLocation());
+                                tmp.x -= (getPiece().getWidth()  / 2);
+                                tmp.y -= (getPiece().getHeight() / 2);
+                                
+                                checkMatch(tmp);
                                 resetSelectedPieceIndex();
                                 hasGameOver();
+                                mouse.resetMouseEvents();
                             }
                         }
                     }
@@ -360,7 +424,15 @@ public class Puzzle
         return (float)(progress / total);
     }
     
-    public Point getDestination(Piece piece)
+    public Point getStartDestination(final Piece piece)
+    {
+        int x = screen.x + (int)(screen.width  * .4)  - (puzzleWidth  / 2) + (piece.getStartCell().getCol() * piece.getWidth());
+        int y = screen.y + (int)(screen.height * .35) - (puzzleHeight / 2) + (piece.getStartCell().getRow() * piece.getHeight());
+
+        return new Point(x, y);
+    }
+
+    public Point getDestination(final Piece piece)
     {
         int x = screen.x + (screen.width  / 2) - (puzzleWidth  / 2) + (piece.getCol() * piece.getOriginalWidth());
         int y = screen.y + (screen.height / 2) - (puzzleHeight / 2) + (piece.getRow() * piece.getOriginalHeight());
@@ -368,15 +440,20 @@ public class Puzzle
         return new Point(x, y);
     }
     
-    public void setGameOver(boolean gameOver)
+    public void setGameOver(final boolean gameOver)
     {
         this.gameOver = gameOver;
     }
     
+    /**
+     * The game is over if all pieces have 
+     * merged into 1 we know the puzzle is complete.
+     * @return boolean
+     */
     public boolean hasGameOver()
-    {   //there is now 1 piece left so puzzle is complete
+    {
         if (!gameOver)
-            gameOver = (pieces.size() == 1);
+            setGameOver(pieces.size() == 1);
         
         return gameOver;
     }
@@ -386,7 +463,7 @@ public class Puzzle
         return (place > 0);
     }
     
-    public void setPlace(int place)
+    public void setPlace(final int place)
     {
         this.place = place;
     }
@@ -396,7 +473,12 @@ public class Puzzle
         return timers;
     }
     
-    private void checkMatch()
+    /**
+     * Checks to see if the current piece selected has connected to another
+     * 
+     * @param mouseLocation 
+     */
+    private void checkMatch(final Point mouseLocation)
     {
         //get the current selected piece
         Piece piece = getPiece();
@@ -409,16 +491,19 @@ public class Puzzle
             //get piece we want to test
             Piece tmp = pieces.get(i);
 
-            //if the piece selected matches we need to combine the two together
+            //if the piece selected matches the tmp Piece we need to combine the two together
             if (piece.intersects(tmp) || piece.intersectsChild(tmp))
             {
                 //add piece matching to child
-                piece.add(tmp);
+                piece.add(tmp, mouseLocation);
                 setPiece(getSelectedPieceIndex(), piece);
 
                 //remove puzzle piece after adding as a child
                 removePiece(i);
 
+                //play snap sound effect
+                this.setPlaySound(true);
+                
                 //selected piece has been matched exit loop
                 break;
             }
@@ -430,13 +515,13 @@ public class Puzzle
         return pieces;
     }
     
-    public void removePiece(Piece pp)
+    public void removePiece(Piece piece)
     {
         for (int i=0; i < pieces.size(); i++)
         {
             Piece tmp = pieces.get(i);
             
-            if (tmp.getCol() == pp.getCol() && tmp.getRow() == pp.getRow())
+            if (tmp.getCol() == piece.getCol() && tmp.getRow() == piece.getRow())
             {
                 removePiece(i);
                 break;
@@ -444,9 +529,9 @@ public class Puzzle
         }        
     }
     
-    public void removePiece(int i)
+    public void removePiece(final int index)
     {
-        pieces.remove(i);
+        pieces.remove(index);
     }
     
     public void mergePieces()
@@ -575,25 +660,14 @@ public class Puzzle
         }
         else
         {
-            if (!isScramblingComplete())
-            {
-                Progress.draw(g, screen, scramblingProgress.getProgress(), "Scrambling Images");
-            }
-            else
-            {
-                for (Piece piece : pieces)
-                {
-                    piece.draw(g);
-                }
-                
-                //draw selected piece last so it appears on top of others
-                if (hasSelectedPiece())
-                {
-                    getPiece().draw(g);
-                }
-                
-                drawPuzzleProgress(g);
-            }
+            for (Piece piece : pieces)
+                piece.draw(g);
+
+            //draw selected piece last so it appears on top of others
+            if (hasSelectedPiece())
+                getPiece().draw(g);
+
+            drawPuzzleProgress(g);
         }
         
         return g;
@@ -605,36 +679,35 @@ public class Puzzle
         Stroke defaultStroke = g2d.getStroke();
         BasicStroke stroke = new BasicStroke(6.0f);
         g2d.setStroke(stroke);
-        
         g2d.setColor(Color.white);
-        g2d.drawRect(screen.x, screen.y, screen.width, screen.height);
         
         String desc = "";
         
-            if (hasGameOver() && hasPlace())
-                desc += "#" + place;
-            
-            if (hasAutoSolve())
+        if (hasGameOver() && hasPlace())
+            desc += "#" + place;
+
+        if (hasAutoSolve())
+        {
+            desc += " Cpu";
+            g2d.setFont(g2d.getFont().deriveFont(Font.PLAIN, 8));
+        }
+        else
+        {
+            g2d.drawRect(screen.x, screen.y, screen.width, screen.height);
+            g2d.setFont(g2d.getFont().deriveFont(Font.PLAIN, 18));
+            desc += " Human ";
+
+            //race
+            if (gameTypeIndex == 0)
             {
-                desc += " Cpu";
-                g2d.setFont(g2d.getFont().deriveFont(Font.PLAIN, 12));
+                desc += timers.getTimer(TimerKey.Game).getDescPassed(TimerCollection.FORMAT_6);
             }
             else
             {
-                g2d.setFont(g2d.getFont().deriveFont(Font.PLAIN, 16));
-                desc += " Human ";
-                
-                //race
-                if (gameTypeIndex == 0)
-                {
-                    desc += timers.getTimer(TimerTrackers.GameTimer).getDescPassed(TimerCollection.FORMAT_6);
-                }
-                else
-                {
-                    //time attack
-                    desc += timers.getTimer(TimerTrackers.GameTimer).getDescRemaining(TimerCollection.FORMAT_6);
-                }
+                //time attack
+                desc += timers.getTimer(TimerKey.Game).getDescRemaining(TimerCollection.FORMAT_6);
             }
+        }
         
         int x = screen.x + (screen.width/2) - (g2d.getFontMetrics().stringWidth(desc)/2);
         g2d.drawString(desc, x, screen.y + (int)(g2d.getFontMetrics().getHeight() * 1.5));

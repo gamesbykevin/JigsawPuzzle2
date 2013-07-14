@@ -106,7 +106,7 @@ public class Engine implements KeyListener, MouseMotionListener, MouseListener, 
                     }
                     else
                     {
-                        puzzles.update(mouse);
+                        puzzles.update(this);
                     }
                 }
                 
@@ -125,6 +125,11 @@ public class Engine implements KeyListener, MouseMotionListener, MouseListener, 
         return main;
     }
     
+    public GameMenu getGameMenu()
+    {
+        return menu;
+    }
+    
     /**
      * Here we provide the logic to create a new game
      * @throws Exception 
@@ -132,7 +137,8 @@ public class Engine implements KeyListener, MouseMotionListener, MouseListener, 
     @Override
     public void reset() throws Exception
     {
-        puzzles = new Puzzles(main, menu, resources.getGameImage());
+        puzzles = new Puzzles();
+        puzzles.reset(this);
         
         boolean audioEnabled = (menu.getOptionSelectionIndex(GameMenu.LayerKey.Options, GameMenu.OptionKey.Sound) == 0);
         resources.setAudioEnabled(audioEnabled);
@@ -177,7 +183,7 @@ public class Engine implements KeyListener, MouseMotionListener, MouseListener, 
         
         if (puzzles != null)
         {
-            puzzles.render(g2d);
+            puzzles.render(g2d, this);
         }
         
         g2d.setFont(f);

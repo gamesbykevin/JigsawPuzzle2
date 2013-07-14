@@ -5,7 +5,6 @@ import java.awt.Rectangle;
 import java.awt.Toolkit;
 import java.awt.geom.*;
 import java.awt.image.FilteredImageSource;
-import java.awt.image.ImageFilter;
 import java.awt.image.MemoryImageSource;
 import java.awt.image.PixelGrabber;
 import java.util.ArrayList;
@@ -17,20 +16,20 @@ public class Cutter
         Traditional, None
     }
     
-    public static ArrayList getCutArea(Puzzle pc, Piece pp)
+    public static ArrayList getCutArea(Puzzle puzzle, Piece piece)
     {
         ArrayList cutAreas = new ArrayList();
         
-        int extraW = pc.getExtraWidth();
-        int extraH = pc.getExtraHeight();
+        int extraW = puzzle.getExtraWidth();
+        int extraH = puzzle.getExtraHeight();
         
-        int cols = pc.getCols();
-        int rows = pc.getRows();
+        int cols = puzzle.getCols();
+        int rows = puzzle.getRows();
         
         //remove 4 corners
         int wc = 0;                             //west side
-        int ec = 0 + pp.getWidth() - extraW;    //east side
-        int sr = 0 + pp.getHeight() - extraH;   //south side
+        int ec = 0 + piece.getWidth() - extraW;    //east side
+        int sr = 0 + piece.getHeight() - extraH;   //south side
         int nr = 0;                             //north side
         
         //NW
@@ -42,22 +41,22 @@ public class Cutter
         //SE
         cutAreas.add(new Area(new Rectangle(ec, sr, extraW, extraH)));
         
-        if (pp.getCol() > 0)
+        if (piece.getCol() > 0)
         {
-            Area west = new Area(new Rectangle(0, extraH, extraW, pp.getHeight() - (extraH * 2)));
+            Area west = new Area(new Rectangle(0, extraH, extraW, piece.getHeight() - (extraH * 2)));
             
-            switch(pc.getPuzzleCut())
+            switch(puzzle.getPuzzleCut())
             {
                 case None:
                     break;
                 case Traditional:
-                    if (pp.hasWestMale())
+                    if (piece.hasWestMale())
                     {
-                        west.subtract(new Area(new Ellipse2D.Double(0, (pp.getHeight()/2) - (extraH/2), extraW, extraH)));
+                        west.subtract(new Area(new Ellipse2D.Double(0, (piece.getHeight()/2) - (extraH/2), extraW, extraH)));
                     }
                     else
                     {
-                        west.add(new Area(new Ellipse2D.Double(extraW, (pp.getHeight()/2) - (extraH/2), extraW, extraH)));
+                        west.add(new Area(new Ellipse2D.Double(extraW, (piece.getHeight()/2) - (extraH/2), extraW, extraH)));
                     }
                     break;
                     
@@ -69,22 +68,22 @@ public class Cutter
             cutAreas.add(west);
         }
         
-        if (pp.getCol() < cols - 1)
+        if (piece.getCol() < cols - 1)
         {
-            Area east = new Area(new Rectangle(pp.getWidth() - extraW, extraH, extraW, pp.getHeight() - (extraH * 2)));
+            Area east = new Area(new Rectangle(piece.getWidth() - extraW, extraH, extraW, piece.getHeight() - (extraH * 2)));
             
-            switch(pc.getPuzzleCut())
+            switch(puzzle.getPuzzleCut())
             {
                 case None:
                     break;
                 case Traditional:
-                    if (pp.hasEastMale())
+                    if (piece.hasEastMale())
                     {
-                        east.subtract(new Area(new Ellipse2D.Double(pp.getWidth() - extraW, (pp.getHeight()/2) - (extraH/2), extraW, extraH)));
+                        east.subtract(new Area(new Ellipse2D.Double(piece.getWidth() - extraW, (piece.getHeight()/2) - (extraH/2), extraW, extraH)));
                     }
                     else
                     {
-                        east.add(new Area(new Ellipse2D.Double(pp.getWidth() - (extraW * 2), (pp.getHeight()/2) - (extraH/2), extraW, extraH)));
+                        east.add(new Area(new Ellipse2D.Double(piece.getWidth() - (extraW * 2), (piece.getHeight()/2) - (extraH/2), extraW, extraH)));
                     }
                     break;
             }
@@ -92,22 +91,22 @@ public class Cutter
             cutAreas.add(east);
         }
         
-        if (pp.getRow() > 0)
+        if (piece.getRow() > 0)
         {
-            Area north = new Area(new Rectangle(extraW, 0, pp.getWidth() - (extraW * 2), extraH));
+            Area north = new Area(new Rectangle(extraW, 0, piece.getWidth() - (extraW * 2), extraH));
             
-            switch(pc.getPuzzleCut())
+            switch(puzzle.getPuzzleCut())
             {
                 case None:
                     break;
                 case Traditional:
-                    if (pp.hasNorthMale())
+                    if (piece.hasNorthMale())
                     {
-                        north.subtract(new Area(new Ellipse2D.Double((pp.getWidth()/2) - (extraW/2), 0, extraW, extraH)));
+                        north.subtract(new Area(new Ellipse2D.Double((piece.getWidth()/2) - (extraW/2), 0, extraW, extraH)));
                     }
                     else
                     {
-                        north.add(new Area(new Ellipse2D.Double((pp.getWidth()/2) - (extraW/2), extraH, extraW, extraH)));
+                        north.add(new Area(new Ellipse2D.Double((piece.getWidth()/2) - (extraW/2), extraH, extraW, extraH)));
                     }
                     break;
             }
@@ -115,22 +114,22 @@ public class Cutter
             cutAreas.add(north);
         }
         
-        if (pp.getRow() < rows - 1)
+        if (piece.getRow() < rows - 1)
         {
-            Area south = new Area(new Rectangle(extraW, pp.getHeight() - extraH, pp.getWidth() - (extraW * 2), extraH));
+            Area south = new Area(new Rectangle(extraW, piece.getHeight() - extraH, piece.getWidth() - (extraW * 2), extraH));
             
-            switch(pc.getPuzzleCut())
+            switch(puzzle.getPuzzleCut())
             {
                 case None:
                     break;
                 case Traditional:
-                    if (pp.hasSouthMale())
+                    if (piece.hasSouthMale())
                     {
-                        south.subtract(new Area(new Ellipse2D.Double((pp.getWidth()/2) - (extraW/2), pp.getHeight() - extraH, extraW, extraH)));
+                        south.subtract(new Area(new Ellipse2D.Double((piece.getWidth()/2) - (extraW/2), piece.getHeight() - extraH, extraW, extraH)));
                     }
                     else
                     {
-                        south.add(new Area(new Ellipse2D.Double((pp.getWidth()/2) - (extraW/2), pp.getHeight() - (extraH*2), extraW, extraH)));
+                        south.add(new Area(new Ellipse2D.Double((piece.getWidth()/2) - (extraW/2), piece.getHeight() - (extraH*2), extraW, extraH)));
                     }
                     break;
             }
@@ -141,14 +140,14 @@ public class Cutter
         return cutAreas;//cutArea
     }
     
-    public static Piece createPiece(Puzzle pc, Piece pp) throws Exception
+    public static Piece createPiece(Puzzle puzzle, Piece piece) throws Exception
     {
         //get areas to exclude from image
-        ArrayList cutAreas = getCutArea(pc, pp);
+        ArrayList cutAreas = getCutArea(puzzle, piece);
         
-        Rectangle r = pp.getRectangle();
+        Rectangle r = piece.getRectangle();
         //grab portion of pixels from original image
-        PixelGrabber pg = new PixelGrabber(pc.getImage(), r.x, r.y, r.width, r.height, true);
+        PixelGrabber pg = new PixelGrabber(puzzle.getImage(), r.x, r.y, r.width, r.height, true);
         pg.grabPixels();
         int pixels[] = (int[])(int[])pg.getPixels();
         
@@ -163,7 +162,7 @@ public class Cutter
         FilteredImageSource fis = new FilteredImageSource(img.getSource(), imgF);
         
         //create image from cut image and set the image to the puzzle piece
-        pp.setImage(Toolkit.getDefaultToolkit().createImage(fis));
-        return pp;
+        piece.setImage(Toolkit.getDefaultToolkit().createImage(fis));
+        return piece;
     }
 }

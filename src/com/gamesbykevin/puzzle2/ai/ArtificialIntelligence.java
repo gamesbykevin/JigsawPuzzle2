@@ -17,12 +17,12 @@ public class ArtificialIntelligence
     }
     
     //how long will it take to place each puzzle piece in correct place
-    public static final long TIME_EASY       = 5500;
-    public static final long TIME_MEDIUM     = 3500;
-    public static final long TIME_HARD       = 2750;
-    public static final long TIME_DIFFERENCE = 250;
+    public static final long TIME_EASY       = 9500;
+    public static final long TIME_MEDIUM     = 7500;
+    public static final long TIME_HARD       = 3250;
+    public static final long TIME_DIFFERENCE = 350;
     
-    public ArtificialIntelligence(Puzzle pc, Difficulty difficulty)
+    public ArtificialIntelligence(Puzzle puzzle, Difficulty difficulty)
     {
         long milliSeconds = 0;
         long difference = (long)((Math.random() * (TIME_DIFFERENCE * 2)) - TIME_DIFFERENCE);
@@ -45,7 +45,7 @@ public class ArtificialIntelligence
         //add difference to cpu time so not all cpu will have same time
         milliSeconds += difference;
         
-        pc.getTimerCollection().setReset(Puzzle.TimerTrackers.CpuMoveTimer, TimerCollection.toNanoSeconds(milliSeconds));
+        puzzle.getTimerCollection().setReset(Puzzle.TimerKey.CpuMove, TimerCollection.toNanoSeconds(milliSeconds));
     }
     
     /**
@@ -74,18 +74,20 @@ public class ArtificialIntelligence
         if (puzzle.hasGameOver())
             return;
         
+        //pick random selected piece with no children at least at first
         if (!puzzle.hasSelectedPiece())
-        {   //pick random selected piece with no children at least at first
+        {
             while(true)
             {
                 int rand = (int)(Math.random() * puzzle.getPieces().size());
                 Piece piece = puzzle.getPieces().get(rand);
                 destination = puzzle.getDestination(piece);
                 
+                //is this piece not already at the destination
                 if (!piece.getPoint().equals(destination))
-                {   //is this piece not already at the destination
+                {
                     puzzle.setSelectedPieceIndex(rand);
-                    puzzle.getTimerCollection().resetRemaining(Puzzle.TimerTrackers.CpuMoveTimer);
+                    puzzle.getTimerCollection().resetRemaining(Puzzle.TimerKey.CpuMove);
                     break;
                 }
             }
@@ -93,7 +95,7 @@ public class ArtificialIntelligence
         
         Piece piece = puzzle.getPiece();
         
-        movePiece(piece, puzzle.getTimerCollection().getTimer(Puzzle.TimerTrackers.CpuMoveTimer).getProgress());
+        movePiece(piece, puzzle);
         
         //after move now check if reached destination
         if (piece.getPoint().equals(destination))
@@ -108,7 +110,7 @@ public class ArtificialIntelligence
         }
     }
     
-    private void movePiece(Piece piece, final float progress)
+    private void movePiece(final Piece piece, final Puzzle puzzle)
     {
         Point start = piece.getOriginalLocation();
         
@@ -118,10 +120,15 @@ public class ArtificialIntelligence
         int x = destination.x;
         int y = destination.y;
         
-        if (progress < 1)
+        if (puzzle.getTimerCollection().getTimer(Puzzle.TimerKey.CpuMove).getProgress() < 1)
         {
-            x = start.x - (int)(xDiff * progress);
-            y = start.y - (int)(yDiff * progress);
+            x = start.x - (int)(xDiff * puzzle.getTimerCollection().getTimer(Puzzle.TimerKey.CpuMove).getProgress());
+            y = start.y - (int)(yDiff * puzzle.getTimerCollection().getTimer(Puzzle.TimerKey.CpuMove).getProgress());
+        }
+        else
+        {
+            //piece is set so play connect sound effect
+            puzzle.setPlaySound(true);
         }
 
         //dont forget to move any child pieces connected to this one

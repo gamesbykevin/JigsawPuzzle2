@@ -233,7 +233,8 @@ public class Main extends Thread
             g.setColor(Color.BLACK);
             g.fillRect(originalSizeWindow.x, originalSizeWindow.y, originalSizeWindow.width, originalSizeWindow.height);
 
-            engine.render(g);
+            if (engine != null)
+                engine.render(g);
 
             if (showCounter)
                 renderCounter(g);

@@ -40,7 +40,10 @@ public class ResourceManager
     public enum GameImage
     {
         Pic1, Pic2, Pic3, Pic4, Pic5, Pic6, Pic7, Pic8, Pic9, Pic10, 
-        Pic11, Pic12, Pic13, Pic14, Pic15, Pic16, Pic17, Pic18, Pic19, Pic20
+        Pic11, Pic12, Pic13, Pic14, Pic15, Pic16, Pic17, Pic18, Pic19, Pic20,
+        Pic21, Pic22, Pic23, Pic24, Pic25, Pic26, Pic27, Pic28, Pic29, Pic30,
+        Pic31, Pic32, Pic33, Pic34, Pic35, Pic36, Pic37, Pic38, Pic39, Pic40,
+        Pic41, Pic42, Pic43, Pic44, Pic45, Pic46
     }
     
     public enum GameFont
@@ -50,7 +53,7 @@ public class ResourceManager
     
     public enum GameAudio
     {
-        Mark
+        Connect
     }
     
     //indicates wether or not we are still loading resources
