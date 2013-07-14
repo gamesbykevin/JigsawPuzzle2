@@ -34,7 +34,7 @@ public class Puzzle
     private int currentPiece = -1;
     
     //this is the ratio of the original width to extend the image on each end
-    public static final double EXTRA_RATIO = .25;
+    public static final double EXTRA_RATIO = .10;
     
     private Rectangle screen;
     
