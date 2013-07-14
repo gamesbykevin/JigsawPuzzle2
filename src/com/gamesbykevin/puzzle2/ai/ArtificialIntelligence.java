@@ -48,6 +48,13 @@ public class ArtificialIntelligence
         pc.getTimerCollection().setReset(Puzzle.TimerTrackers.CpuMoveTimer, TimerCollection.toNanoSeconds(milliSeconds));
     }
     
+    /**
+     * Returns the milliseconds that the cpu
+     * is going to delay for placing each 
+     * puzzle piece. Easy, Medium, Hard
+     * @param difficulty
+     * @return long Millisecond delay
+     */
     public static long getDifficultyDelay(Difficulty difficulty)
     {
         long milliSeconds = TIME_DIFFERENCE;
@@ -62,48 +69,48 @@ public class ArtificialIntelligence
         return TimerCollection.toNanoSeconds(milliSeconds);
     }
     
-    public void solve(Puzzle pc)
+    public void solve(Puzzle puzzle)
     {
-        if (pc.hasGameOver())
+        if (puzzle.hasGameOver())
             return;
         
-        if (!pc.hasSelectedPiece())
+        if (!puzzle.hasSelectedPiece())
         {   //pick random selected piece with no children at least at first
             while(true)
             {
-                int rand = (int)(Math.random() * pc.getPieces().size());
-                Piece pp = pc.getPiece(rand);
-                destination = pc.getDestination(pp);
+                int rand = (int)(Math.random() * puzzle.getPieces().size());
+                Piece piece = puzzle.getPieces().get(rand);
+                destination = puzzle.getDestination(piece);
                 
-                if (!pp.getPoint().equals(destination))
+                if (!piece.getPoint().equals(destination))
                 {   //is this piece not already at the destination
-                    pc.setSelectedPiece(rand);
-                    pc.getTimerCollection().resetRemaining(Puzzle.TimerTrackers.CpuMoveTimer);
+                    puzzle.setSelectedPieceIndex(rand);
+                    puzzle.getTimerCollection().resetRemaining(Puzzle.TimerTrackers.CpuMoveTimer);
                     break;
                 }
             }
         }
         
-        Piece pp = pc.getCurrentPiece();
+        Piece piece = puzzle.getPiece();
         
-        movePiece(pp, pc.getTimerCollection().getTimer(Puzzle.TimerTrackers.CpuMoveTimer).getProgress());
+        movePiece(piece, puzzle.getTimerCollection().getTimer(Puzzle.TimerTrackers.CpuMoveTimer).getProgress());
         
         //after move now check if reached destination
-        if (pp.getPoint().equals(destination))
+        if (piece.getPoint().equals(destination))
         {   //destination reached check if pieces intersect to merge
             destination = null;
-            pc.resetSelectedPiece();
-            pc.mergePieces();
+            puzzle.resetSelectedPieceIndex();
+            puzzle.mergePieces();
         }
         else
         {
-            pc.setPiece(pc.getSelectedPiece(), pp);
+            puzzle.setPiece(puzzle.getSelectedPieceIndex(), piece);
         }
     }
     
-    private void movePiece(Piece pp1, float progress)
+    private void movePiece(Piece piece, final float progress)
     {
-        Point start = pp1.getOriginalLocation();
+        Point start = piece.getOriginalLocation();
         
         int xDiff = start.x - destination.x;
         int yDiff = start.y - destination.y;
@@ -117,7 +124,7 @@ public class ArtificialIntelligence
             y = start.y - (int)(yDiff * progress);
         }
 
-        //dont forget to move any pieces connected to this one
-        pp1.setNewPosition(x, y);
+        //dont forget to move any child pieces connected to this one
+        piece.setNewPosition(new Point(x, y));
     }
 }

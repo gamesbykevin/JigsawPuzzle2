@@ -12,8 +12,6 @@ import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
-import java.util.ArrayList;
-import java.util.List;
 
 //TODO here we need to have the resources object and the menu object
 
@@ -202,7 +200,7 @@ public class Engine implements KeyListener, MouseMotionListener, MouseListener, 
         //is menu is finished and we dont want to hide mouse cursor then draw it, or if the menu is not finished show mouse
         if (menu.isMenuFinished() && !Main.HIDE_MOUSE || !menu.isMenuFinished())
         {
-            Point p = mouse.getMouseLocation();
+            Point p = mouse.getLocation();
 
             if (p != null && resources.getMenuImage(ResourceManager.MenuImage.Mouse) != null && resources.getMenuImage(ResourceManager.MenuImage.MouseDrag) != null)
             {

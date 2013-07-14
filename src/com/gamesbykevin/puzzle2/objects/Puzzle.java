@@ -8,11 +8,12 @@ import com.gamesbykevin.puzzle2.ai.*;
 
 import java.awt.*;
 import java.awt.image.*;
+import java.util.List;
 import java.util.ArrayList;
 
 public class Puzzle 
 {
-    private ArrayList pieces;
+    private List<Piece> pieces;
     private Image image;    //entire image before cut
     
     //this is the extra width and height on each puzzle piece
@@ -31,12 +32,13 @@ public class Puzzle
     private Progress scramblingProgress;
     
     //current puzzle piece selected
-    private int currentPiece = -1;
+    private int currentPieceIndex = -1;
     
     //this is the ratio of the original width to extend the image on each end
-    public static final double EXTRA_RATIO = .10;
+    public static final double EXTRA_RATIO = .25;
     
-    private Rectangle screen;
+    //this is the ratio on the end
+    public static final double EXTRA_INTERSECT_RATIO = .25;
     
     //should the computer autoSolve the puzzle
     private boolean autoSolve = false;
@@ -51,14 +53,14 @@ public class Puzzle
     private int difficultyIndex;
     private int gameTypeIndex;
     
+    //the window this puzzle is contained within
+    private final Rectangle screen;
+    
     //is game over
     private boolean gameOver = false;
     
     //what place did this object come in
     private int place = -1;
-    
-    //format to display timer
-    private static final String TIME_FORMAT = "mm:ss.SSS";
     
     public enum TimerTrackers
     {
@@ -69,14 +71,14 @@ public class Puzzle
     
     public Puzzle(Image image, int rows, int cols, Rectangle screen, long timeDeduction, int gameTypeIndex, int difficultyIndex, int puzzleCutIndex)
     {
-        this.puzzleCut = Cutter.PuzzleCut.values()[puzzleCutIndex];
         this.screen = screen;
+        this.puzzleCut = Cutter.PuzzleCut.values()[puzzleCutIndex];
         this.difficultyIndex = difficultyIndex;
         this.gameTypeIndex = gameTypeIndex;
         
+        //if image is bigger than the window resize image 
         if (image.getWidth(null) >= screen.width || image.getHeight(null) >= screen.height)
         {
-            //if image is bigger than the window resize image 
             //assume puzzle image has same width and height
             int maxDim = screen.width;
             
@@ -89,32 +91,34 @@ public class Puzzle
             BufferedImage resizedImage = new BufferedImage(bothDim, bothDim, BufferedImage.TYPE_INT_RGB);
             Graphics2D g = resizedImage.createGraphics();
             g.drawImage(image, 0, 0, bothDim, bothDim, null);
-            //g.drawImage(image, 0, 0, screen.width, screen.height, null);
             g.dispose();
             
             this.image = resizedImage;
         }
         else
         {
+            //image was not bigger so resize is not needed
             this.image = image;
         }
         
         timers = new TimerCollection(timeDeduction);
         
+        //time attack
         if (gameTypeIndex == 1)
-        {   //time attack
+        {
             long reset = ArtificialIntelligence.getDifficultyDelay(ArtificialIntelligence.Difficulty.values()[difficultyIndex]);
             reset *= (rows * cols);
             timers.add(TimerTrackers.GameTimer, reset);
         }
         else
-        {   //race
+        {
+            //race
             timers.add(TimerTrackers.GameTimer);
         }
         
         timers.add(TimerTrackers.CpuMoveTimer);
         
-        pieces = new ArrayList();
+        pieces = new ArrayList<>();
         
         //width of each puzzle piece
         int width  = (int)(this.image.getWidth(null) / cols);
@@ -267,13 +271,13 @@ public class Puzzle
         if (!isCuttingComplete())
         {
             //get puzzle piece
-            Piece pp = getPiece(cuttingProgress.getCurrentCount());
+            Piece piece = pieces.get(cuttingProgress.getCurrentCount());
 
             //cut image for puzzle piece
-            pp = Cutter.createPiece(this, pp);
+            piece = Cutter.createPiece(this, piece);
 
             //set puzzle piece after cut image has been set
-            setPiece(cuttingProgress.getCurrentCount(), pp);
+            setPiece(cuttingProgress.getCurrentCount(), piece);
 
             cuttingProgress.increaseProgress();
         }
@@ -281,13 +285,13 @@ public class Puzzle
         {
             if (!isScramblingComplete())
             {
-                Piece pp = getPiece(scramblingProgress.getCurrentCount());
+                Piece piece = pieces.get(scramblingProgress.getCurrentCount());
                 
-                int randX = screen.x + (int)(Math.random() * (screen.width  - pp.getWidth() ));
-                int randY = screen.y + (int)(Math.random() * (screen.height - pp.getHeight()));
+                int randX = screen.x + (int)(Math.random() * (screen.width  - piece.getWidth() ));
+                int randY = screen.y + (int)(Math.random() * (screen.height - piece.getHeight()));
                 
-                pp.setLocation(randX, randY);
-                pp.setOriginalLocation(pp.getPoint());//set original location for
+                piece.setLocation(randX, randY);
+                piece.setOriginalLocation(piece.getPoint());//set original location for
                 
                 scramblingProgress.increaseProgress();
             }
@@ -297,8 +301,9 @@ public class Puzzle
                 {
                     timers.update();
                     
+                    //if time attack mode make sure timer doesnt go negative
                     if (gameTypeIndex == 1)
-                    {   //if time attack mode make sure timer doesnt go negative
+                    {
                         if (timers.hasTimePassed(TimerTrackers.GameTimer))
                         {
                             timers.setRemaining(TimerTrackers.GameTimer, 0);
@@ -320,21 +325,21 @@ public class Puzzle
                         if (!hasSelectedPiece())
                         {   //if no puzzle piece is selected check mouse actions
                             if (mouse.isMouseDragged() || mouse.isMouseClicked())
-                            {
-                                setSelectedPiece(mouse.getMouseLocation());
-                            }
+                                setSelectedPiece(mouse.getLocation());
                         }
                         else
                         {
+                            //if dragging mouse move puzzle piece appropriately
                             if (mouse.isMouseDragged())
-                            {   //if dragging mouse move puzzle piece appropriately
-                                setPieceLocation(mouse.getMouseLocation());
+                            {
+                                getPiece().setNewPosition(mouse.getLocation());
                             }
 
+                            //if mouse released reset current puzzle piece selected
                             if (mouse.isMouseReleased())
-                            {   //if mouse released reset current puzzle piece selected
+                            {
                                 checkMatch();
-                                resetSelectedPiece();
+                                resetSelectedPieceIndex();
                                 hasGameOver();
                             }
                         }
@@ -355,10 +360,10 @@ public class Puzzle
         return (float)(progress / total);
     }
     
-    public Point getDestination(Piece pp)
+    public Point getDestination(Piece piece)
     {
-        int x = screen.x + (screen.width  / 2) - (puzzleWidth  / 2) + (pp.getCol() * pp.getOriginalWidth());
-        int y = screen.y + (screen.height / 2) - (puzzleHeight / 2) + (pp.getRow() * pp.getOriginalHeight());
+        int x = screen.x + (screen.width  / 2) - (puzzleWidth  / 2) + (piece.getCol() * piece.getOriginalWidth());
+        int y = screen.y + (screen.height / 2) - (puzzleHeight / 2) + (piece.getRow() * piece.getOriginalHeight());
 
         return new Point(x, y);
     }
@@ -386,12 +391,6 @@ public class Puzzle
         this.place = place;
     }
     
-    private void setPieceLocation(Point mousePoint)
-    {
-        Piece pp = getCurrentPiece();
-        pp.setNewPosition(mousePoint.x - (pp.getWidth()/2), mousePoint.y - (pp.getHeight()/2));
-    }
-    
     public TimerCollection getTimerCollection()
     {
         return timers;
@@ -399,35 +398,34 @@ public class Puzzle
     
     private void checkMatch()
     {
-        if (hasSelectedPiece())
+        //get the current selected piece
+        Piece piece = getPiece();
+
+        for (int i=0; i < pieces.size(); i++)
         {
-            Piece pp = getCurrentPiece();
-            
-            for (int i=0; i < pieces.size(); i++)
+            if (i == getSelectedPieceIndex())
+                continue;
+
+            //get piece we want to test
+            Piece tmp = pieces.get(i);
+
+            //if the piece selected matches we need to combine the two together
+            if (piece.intersects(tmp) || piece.intersectsChild(tmp))
             {
-                if (i == getSelectedPiece())
-                    continue;
-                
-                Piece tmp = getPiece(i);
-                
-                //check when adding current piece to an existing piece that has child for match
-                if (pp.intersects(tmp) || pp.intersectsChild(tmp))
-                {   //if the piece selected matches we need to combine the two together
-                    //add piece mathcing to child
-                    pp.add(tmp);
-                    setPiece(getSelectedPiece(), pp);
-                    
-                    //remove puzzle piece after adding as a child
-                    removePiece(i);
-                    
-                    //selected piece has been matched exit loop
-                    break;
-                }
+                //add piece matching to child
+                piece.add(tmp);
+                setPiece(getSelectedPieceIndex(), piece);
+
+                //remove puzzle piece after adding as a child
+                removePiece(i);
+
+                //selected piece has been matched exit loop
+                break;
             }
         }
     }
     
-    public ArrayList getPieces()
+    public List<Piece> getPieces()
     {
         return pieces;
     }
@@ -436,7 +434,7 @@ public class Puzzle
     {
         for (int i=0; i < pieces.size(); i++)
         {
-            Piece tmp = getPiece(i);
+            Piece tmp = pieces.get(i);
             
             if (tmp.getCol() == pp.getCol() && tmp.getRow() == pp.getRow())
             {
@@ -455,7 +453,7 @@ public class Puzzle
     {
         for (int i=0; i < pieces.size(); i++)
         {
-            Piece p1 = getPiece(i);
+            Piece p1 = pieces.get(i);
             
             boolean exit = false;
             
@@ -464,7 +462,7 @@ public class Puzzle
                 if (i == x)
                     continue;
                 
-                Piece p2 = getPiece(x);
+                Piece p2 = pieces.get(x);
                 
                 if (p1.intersects(p2) || p1.intersectsChild(p2))
                 {
@@ -486,66 +484,87 @@ public class Puzzle
         }
     }
     
-    public void resetSelectedPiece()
+    public void resetSelectedPieceIndex()
     {
-        currentPiece = -1;
+        setSelectedPieceIndex(-1);
     }
     
     public boolean hasSelectedPiece()
     {
-        return (currentPiece > -1);
+        return (getSelectedPieceIndex() > -1);
     }
     
-    public int getSelectedPiece()
+    public int getSelectedPieceIndex()
     {
-        return this.currentPiece;
+        return this.currentPieceIndex;
     }
     
-    public void setSelectedPiece(int currentPiece)
+    /**
+     * Sets the index in our pieces list.
+     * @param currentPieceIndex 
+     */
+    public void setSelectedPieceIndex(final int currentPieceIndex)
     {
-        this.currentPiece = currentPiece;
+        this.currentPieceIndex = currentPieceIndex;
     }
     
-    private void setSelectedPiece(Point mousePoint)
+    /**
+     * Set the selected piece based on the mouse location.
+     * If multiple pieces are at the same location
+     * the piece drawn last on the screen will be the piece selected.
+     * @param mousePoint x,y coordinate location of mouse
+     */
+    private void setSelectedPiece(final Point mousePoint)
     {
-        for (int i=pieces.size() - 1; i >= 0; i--)
+        //start witht the last piece in the collection because that will be the piece drawn on top
+        for (int i = pieces.size() - 1; i >= 0; i--)
         {
-            Piece pp = getPiece(i);
+            Piece piece = pieces.get(i);
             
-            if (pp.getRectangle().contains(mousePoint) || pp.hasChild(mousePoint))
+            if (piece.getRectangle().contains(mousePoint) || piece.hasChild(mousePoint))
             {
-                setSelectedPiece(i);
+                //set the index of the selected piece
+                setSelectedPieceIndex(i);
+                
+                //set the index of the child piece if a child piece was selected
+                piece.setSelectedPieceIndex(mousePoint);
                 break;
             }
         }
     }
     
-    private Piece getPiece(int col, int row)
+    /**
+     * Returns the puzzle piece at the given col, row
+     * @param col
+     * @param row
+     * @return Piece
+     */
+    private Piece getPiece(final int col, final int row)
     {
-        for (int i=0; i < pieces.size(); i++)
+        for (Piece piece : pieces)
         {
-            Piece pp = getPiece(i);
-            
-            if (pp.equals(col, row))
-                return pp;
+            if (piece.equals(col, row))
+                return piece;
         }
         
         return null;
     }
     
-    public Piece getPiece(int i)
+    /**
+     * Returns the current piece selected, null if no object
+     * @return Piece
+     */
+    public Piece getPiece()
     {
-        return (Piece)pieces.get(i);
+        if (getSelectedPieceIndex() >= 0)
+            return pieces.get(getSelectedPieceIndex());
+        else
+            return null;
     }
     
-    public Piece getCurrentPiece()
+    public void setPiece(final int i, final Piece piece)
     {
-        return getPiece(currentPiece);
-    }
-    
-    public void setPiece(int i, Piece pp)
-    {
-        pieces.set(i, pp);
+        pieces.set(i, piece);
     }
     
     public Graphics draw(Graphics g)
@@ -562,14 +581,15 @@ public class Puzzle
             }
             else
             {
-                for (int i=0; i < pieces.size(); i++)
+                for (Piece piece : pieces)
                 {
-                    getPiece(i).draw(g);
+                    piece.draw(g);
                 }
                 
+                //draw selected piece last so it appears on top of others
                 if (hasSelectedPiece())
-                {   //draw selected piece last so it appears on top of others
-                    getCurrentPiece().draw(g);
+                {
+                    getPiece().draw(g);
                 }
                 
                 drawPuzzleProgress(g);
@@ -607,12 +627,12 @@ public class Puzzle
                 //race
                 if (gameTypeIndex == 0)
                 {
-                    desc += timers.getTimer(TimerTrackers.GameTimer).getDescPassed(TIME_FORMAT);
+                    desc += timers.getTimer(TimerTrackers.GameTimer).getDescPassed(TimerCollection.FORMAT_6);
                 }
                 else
                 {
                     //time attack
-                    desc += timers.getTimer(TimerTrackers.GameTimer).getDescRemaining(TIME_FORMAT);
+                    desc += timers.getTimer(TimerTrackers.GameTimer).getDescRemaining(TimerCollection.FORMAT_6);
                 }
             }
         

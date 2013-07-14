@@ -106,8 +106,8 @@ public class Puzzles
             {
                 //if 1st player is human they will get left half the window, the other cpu windows will all share the right half
                 Rectangle r = main.getScreen();
-                leftSide = new Rectangle(r.x, r.y, (int)(r.width * .66), r.height);
-                rightSide = new Rectangle(r.x + (int)(r.width * .66), r.y, (int)(r.width * .33), r.height);
+                leftSide  = new Rectangle(r.x,                        r.y, (int)(r.width * .75), r.height);
+                rightSide = new Rectangle(r.x + (int)(r.width * .75), r.y, (int)(r.width * .25), r.height);
                 
                 if ((int)squareRoot < squareRoot)
                 {
@@ -151,37 +151,37 @@ public class Puzzles
                 if (collection.size() >= numPlayers)
                     continue;
                 
-                Puzzle pc = new Puzzle(image, puzzleRows, puzzleCols, windows[row][col], main.getTimeDeductionPerFrame(), gameTypeIndex, difficultyIndex, puzzleCutIndex);
-                pc.setAutoSolve(true);
-                collection.add(pc);
+                Puzzle puzzle = new Puzzle(image, puzzleRows, puzzleCols, windows[row][col], main.getTimeDeductionPerFrame(), gameTypeIndex, difficultyIndex, puzzleCutIndex);
+                puzzle.setAutoSolve(true);
+                collection.add(puzzle);
             }
         }
     }
     
     public void update(Mouse mouse) throws Exception
     {
-        for (Puzzle pc : collection)
+        for (Puzzle puzzle : collection)
         {
-            if (pc != null)
-                pc.update(mouse);
+            if (puzzle != null)
+                puzzle.update(mouse);
         }
 
         //need to check if game is finished and set place 1st, 2nd, 3rd etc..
         int nextPlace = 1;
 
         //calculate what the next rank will be
-        for (Puzzle pc : collection)
+        for (Puzzle puzzle : collection)
         {
-            if (pc != null && pc.hasGameOver() && pc.hasPlace())
+            if (puzzle != null && puzzle.hasGameOver() && puzzle.hasPlace())
                 nextPlace++;
         }
 
         //if game is finished and no place set
-        for (Puzzle pc : collection)
+        for (Puzzle puzzle : collection)
         {
-            if (pc != null && pc.hasGameOver() && !pc.hasPlace())
+            if (puzzle != null && puzzle.hasGameOver() && !puzzle.hasPlace())
             {
-                pc.setPlace(nextPlace);
+                puzzle.setPlace(nextPlace);
                 nextPlace++;
             }
         }
@@ -191,10 +191,10 @@ public class Puzzles
     {
         if (collection != null)
         {
-            for (Puzzle pc : collection)
+            for (Puzzle puzzle : collection)
             {
-                if (pc != null)
-                    pc.draw(g2d);
+                if (puzzle != null)
+                    puzzle.draw(g2d);
             }
         }
         
